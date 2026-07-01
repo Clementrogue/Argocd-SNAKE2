@@ -10,5 +10,5 @@ patches:
       kind: Deployment
       name: snake
 images:
-  - name: ghcr.io/OWNER/argocd-snake
+  - name: ghcr.io/brubru-420/argocd-snake
     newTag: dev-latest
