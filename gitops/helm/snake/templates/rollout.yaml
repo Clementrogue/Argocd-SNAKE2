@@ -1,0 +1,35 @@
+{{- if .Values.rollout.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: snake
+  labels:
+    {{- include "snake.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "snake.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "snake.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        {{- include "snake.container" . | nindent 8 }}
+  strategy:
+    {{- if eq .Values.rollout.strategy "blueGreen" }}
+    blueGreen:
+      activeService: snake
+      previewService: snake-preview
+      autoPromotionEnabled: false
+    {{- else }}
+    canary:
+      steps:
+        - setWeight: 10
+        - pause: { duration: 30 }
+        - setWeight: 50
+        - pause: { duration: 30 }
+        - setWeight: 100
+    {{- end }}
+{{- end }}
