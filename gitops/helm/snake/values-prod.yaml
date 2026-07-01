@@ -1,9 +1,9 @@
 replicaCount: 3
 image:
-  tag: prod-latest
+  tag: v2
 app:
-  version: "v1"
-  color: "#39ff14"
+  version: "v2"
+  color: "#ff8c00"
 rollout:
   enabled: true
   strategy: canary
