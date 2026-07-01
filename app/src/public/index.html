@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🐍 Argocd-SNAKE</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>🐍 ARGOCD&nbsp;SNAKE</h1>
+        <span id="version-badge" class="badge">…</span>
+      </header>
+
+      <div class="hud">
+        <div>Score : <strong id="score">0</strong></div>
+        <div>Record : <strong id="best">0</strong></div>
+      </div>
+
+      <canvas id="board" width="400" height="400"></canvas>
+
+      <div id="overlay" class="overlay">
+        <p id="overlay-text">Appuie sur ESPACE ou clique pour jouer</p>
+      </div>
+
+      <section class="scores">
+        <h2>Top 10</h2>
+        <ol id="scoreboard"><li class="muted">Aucun score pour l'instant.</li></ol>
+      </section>
+
+      <footer>
+        <p>Flèches ou ZQSD pour diriger · déployé via ArgoCD 🚀</p>
+      </footer>
+    </main>
+
+    <script src="snake.js"></script>
+  </body>
+</html>

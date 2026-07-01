@@ -1,0 +1,132 @@
+:root {
+  --accent: #39ff14;
+  --bg: #0d0d17;
+  --panel: #16162a;
+  --text: #e8e8f0;
+  --muted: #7a7a95;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 0%, #1a1a33, var(--bg) 70%);
+  color: var(--text);
+  font-family: "Courier New", ui-monospace, monospace;
+}
+
+main {
+  width: 440px;
+  max-width: 94vw;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  letter-spacing: 2px;
+  margin: 0;
+  color: var(--accent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.hud {
+  display: flex;
+  justify-content: space-between;
+  margin: 14px 2px 8px;
+  font-size: 0.95rem;
+}
+
+.hud strong {
+  color: var(--accent);
+}
+
+#board {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  background: var(--panel);
+  border: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+
+.overlay {
+  margin-top: -220px;
+  height: 200px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  pointer-events: none;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay p {
+  background: rgba(13, 13, 23, 0.82);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.scores {
+  margin-top: 26px;
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+
+.scores h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.scores ol {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 0.9rem;
+}
+
+.scores li {
+  padding: 3px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.muted {
+  color: var(--muted);
+  list-style: none;
+}
+
+footer p {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 18px;
+}
