@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: snake
+  namespace: snake-prod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: snake
+  template:
+    metadata:
+      labels:
+        app: snake
+    spec:
+      containers:
+        - name: snake
+          image: ghcr.io/OWNER/argocd-snake:prod-latest
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet: { path: /readyz, port: 3000 }
+  strategy:
+    blueGreen:
+      activeService: snake            # sert la version "active" (blue)
+      previewService: snake-preview   # sert la nouvelle version (green)
+      autoPromotionEnabled: false     # bascule manuelle en 1 clic
