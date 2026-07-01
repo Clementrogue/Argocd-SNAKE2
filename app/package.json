@@ -1,0 +1,30 @@
+{
+  "name": "argocd-snake",
+  "version": "1.0.0",
+  "description": "Jeu Snake (Node.js/Express) + API REST de scores — projet fil rouge GitOps",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "jest --coverage --forceExit",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [
+    "snake",
+    "gitops",
+    "argocd",
+    "kubernetes"
+  ],
+  "author": "Team Argocd-SNAKE",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
