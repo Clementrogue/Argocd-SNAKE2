@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: argocd
+data:
+  policy.default: role:readonly
+  policy.csv: |
+    # --- Rôles ---
+    # dev : peut voir et synchroniser DEV, lecture seule sur PROD
+    p, role:snake-dev, applications, get, snake/*, allow
+    p, role:snake-dev, applications, sync, snake/snake-dev, allow
+    # ops : plein contrôle sur dev et prod (sync, override, delete)
+    p, role:snake-ops, applications, *, snake/*, allow
+    # viewer : lecture seule
+    p, role:snake-viewer, applications, get, snake/*, allow
+
+    # --- Affectation des utilisateurs (à adapter à vos comptes GitHub/SSO) ---
+    g, personne-a, role:snake-ops
+    g, personne-b, role:snake-ops
+  scopes: "[groups]"
