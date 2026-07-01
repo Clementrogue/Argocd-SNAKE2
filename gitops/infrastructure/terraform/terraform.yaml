@@ -1,0 +1,18 @@
+apiVersion: infra.contrib.fluxcd.io/v1alpha2
+kind: Terraform
+metadata:
+  name: snake-infra
+  namespace: flux-system
+spec:
+  interval: 2m
+  approvePlan: auto          # applique automatiquement (démo). Mettre "" pour valider à la main.
+  path: ./gitops/infrastructure/terraform
+  sourceRef:
+    kind: GitRepository
+    name: argocd-snake
+    namespace: flux-system
+  # State stocké comme secret K8s (pas de backend distant)
+  backendConfig:
+    disableLock: true
+  # Détection de drift : re-applique si la conf réelle diverge du .tf
+  driftDetectionInterval: 2m
