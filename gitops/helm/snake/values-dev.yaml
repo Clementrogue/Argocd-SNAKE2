@@ -1,0 +1,8 @@
+replicaCount: 1
+image:
+  tag: dev-latest
+app:
+  version: "v1"
+  color: "#39ff14"
+rollout:
+  enabled: false
