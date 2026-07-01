@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: snake
+  namespace: argocd
+spec:
+  description: Projet fil rouge - jeu Snake
+  sourceRepos:
+    - "https://github.com/OWNER/Argocd-SNAKE.git"
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: snake-dev
+    - server: https://kubernetes.default.svc
+      namespace: snake-prod
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
