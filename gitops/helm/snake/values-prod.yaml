@@ -1,0 +1,9 @@
+replicaCount: 3
+image:
+  tag: prod-latest
+app:
+  version: "v1"
+  color: "#39ff14"
+rollout:
+  enabled: true
+  strategy: canary

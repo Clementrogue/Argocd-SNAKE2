@@ -1,0 +1,28 @@
+# Valeurs par défaut. Surchargées par values-dev.yaml / values-prod.yaml.
+image:
+  repository: ghcr.io/OWNER/argocd-snake
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+app:
+  version: "v1"
+  color: "#39ff14"
+
+# Bascule Deployment classique <-> Argo Rollout (Étape 3)
+rollout:
+  enabled: false
+  strategy: canary   # canary | blueGreen
+
+service:
+  port: 80
+  targetPort: 3000
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
