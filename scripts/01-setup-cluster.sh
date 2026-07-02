@@ -12,7 +12,7 @@ k3d cluster create "$CLUSTER" \
 
 echo "==> Installation d'ArgoCD"
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 echo "==> Attente du démarrage d'ArgoCD..."
 kubectl -n argocd rollout status deploy/argocd-server --timeout=180s
