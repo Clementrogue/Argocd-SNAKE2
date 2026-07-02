@@ -11,8 +11,6 @@ spec:
     kind: GitRepository
     name: argocd-snake
     namespace: flux-system
-  # State stocké comme secret K8s (pas de backend distant)
-  backendConfig:
-    disableLock: true
-  # Détection de drift : re-applique si la conf réelle diverge du .tf
-  driftDetectionInterval: 2m
+  # Detection de drift : re-applique si la conf reelle diverge du .tf
+  # (false = drift detection active, c'est le comportement voulu)
+  disableDriftDetection: false
