@@ -1,6 +1,6 @@
 replicaCount: 1
 image:
-  tag: sha-5576a4e
+  tag: sha-3cce550
 app:
   version: "v1"
   color: "#39ff14"
