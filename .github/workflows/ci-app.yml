@@ -11,7 +11,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/argocd-snake
 
 jobs:
   test:
@@ -38,6 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Définir le nom d'image en minuscule
+        id: image
+        run: echo "name=$(echo '${{ github.repository_owner }}/argocd-snake' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Login GHCR
         uses: docker/login-action@v3
         with:
@@ -55,13 +58,13 @@ jobs:
           context: ./app
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ steps.meta.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:latest
 
       - name: Scan sécurité (Trivy) - Étape 5
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          image-ref: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:${{ steps.meta.outputs.tag }}
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true   # évite de bloquer sur des CVE sans patch dispo
