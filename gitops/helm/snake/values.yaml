@@ -1,6 +1,6 @@
 # Valeurs par défaut. Surchargées par values-dev.yaml / values-prod.yaml.
 image:
-  repository: ghcr.io/brubru-420/argocd-snake
+  repository: ghcr.io/clementrogue/argocd-snake
   tag: latest
   pullPolicy: IfNotPresent
 

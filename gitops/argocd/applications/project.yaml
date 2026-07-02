@@ -6,7 +6,7 @@ metadata:
 spec:
   description: Projet fil rouge - jeu Snake
   sourceRepos:
-    - "https://github.com/brubru-420/Argocd-SNAKE.git"
+    - "https://github.com/Clementrogue/Argocd-SNAKE2.git"
   destinations:
     - server: https://kubernetes.default.svc
       namespace: snake-dev

@@ -8,7 +8,7 @@ metadata:
 spec:
   project: snake
   source:
-    repoURL: "https://github.com/brubru-420/Argocd-SNAKE.git"
+    repoURL: "https://github.com/Clementrogue/Argocd-SNAKE2.git"
     targetRevision: main
     path: gitops/helm/snake
     helm:

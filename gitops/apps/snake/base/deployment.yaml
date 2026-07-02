@@ -17,7 +17,7 @@ spec:
       containers:
         - name: snake
           # Le tag est surchargé par Kustomize (overlays) OU par la CI.
-          image: ghcr.io/brubru-420/argocd-snake:latest
+          image: ghcr.io/clementrogue/argocd-snake:latest
           ports:
             - containerPort: 3000
           env:

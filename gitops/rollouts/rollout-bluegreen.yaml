@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: snake
-          image: ghcr.io/brubru-420/argocd-snake:prod-latest
+          image: ghcr.io/clementrogue/argocd-snake:prod-latest
           ports:
             - containerPort: 3000
           readinessProbe:
