@@ -66,3 +66,13 @@ resource "kubernetes_network_policy" "snake" {
 output "namespaces" {
   value = [for ns in kubernetes_namespace.snake : ns.metadata[0].name]
 }
+
+import {
+  to = kubernetes_namespace.snake["snake-dev"]
+  id = "snake-dev"
+}
+
+import {
+  to = kubernetes_namespace.snake["snake-prod"]
+  id = "snake-prod"
+}
