@@ -1,127 +1,260 @@
-# 🐍 Argocd-SNAKE
+# 🐍 Argocd-SNAKE — Projet fil rouge GitOps
 
-Projet fil rouge **GitOps** — déploiement d'un jeu **Snake** (Node.js/Express) sur
-Kubernetes, piloté de bout en bout par **ArgoCD**, avec CI/CD, déploiements
-progressifs (Argo Rollouts), Infrastructure as Code (Terraform Controller) et
-sécurité GitOps.
+Déploiement d'un jeu **Snake** (Node.js / Express + API REST de scores) sur **Kubernetes**, piloté 100 % en **GitOps** avec **ArgoCD**. Le dépôt Git est l'unique source de vérité : tout changement mergé sur `main` est synchronisé automatiquement sur le cluster.
 
-> Le jeu Snake remplace la todo-api de l'énoncé. L'API REST des scores
-> (`GET/POST/DELETE /api/scores`) joue le rôle des endpoints demandés.
+Stack : **k3d · ArgoCD · Helm · Kustomize · Argo Rollouts · Flux + Terraform Controller · Sealed Secrets**.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
+
+### Vue d'ensemble
 
 ```
-Développeur ──push──> GitHub (app/)
-                          │
-                 GitHub Actions (CI)
-             build → test → scan Trivy
-                → push image (GHCR)
-                → écrit le tag dans gitops/
-                          │
-                       git commit
-                          │
-                        ArgoCD  ◄── surveille gitops/helm/snake
-                          │
-                    sync automatique
-                          ▼
-                 ┌──────────────────┐
-                 │   Cluster k3d    │
-                 │  snake-dev (1)   │
-                 │  snake-prod (3)  │ ← Argo Rollouts (canary / blue-green)
-                 └──────────────────┘
+        git push (main)
+             │
+             ▼
+   ┌───────────────────┐        watch & sync         ┌────────────────────────┐
+   │   Dépôt GitHub     │ ──────────────────────────► │        ArgoCD          │
+   │  (source de vérité)│                             │   (namespace argocd)   │
+   └───────────────────┘                             └───────────┬────────────┘
+                                                                 │ applique
+                                          ┌──────────────────────┼──────────────────────┐
+                                          ▼                                              ▼
+                                  ┌───────────────┐                            ┌───────────────┐
+                                  │  snake-dev    │                            │  snake-prod   │
+                                  │  1 replica    │                            │  3 replicas   │
+                                  │  Deployment   │                            │  Argo Rollout │
+                                  │  v1 · vert    │                            │  v2 · canary  │
+                                  └───────────────┘                            └───────────────┘
 ```
 
-## Structure du dépôt
+### Deux environnements, une seule base de code
+
+| | **dev** (`snake-dev`) | **prod** (`snake-prod`) |
+|---|---|---|
+| Replicas | 1 | 3 |
+| Type de déploiement | `Deployment` classique | **Argo Rollout** (canary) |
+| Version applicative | `v1` | `v2` |
+| Couleur du serpent | 🟢 `#39ff14` | 🔵 `#00d4ff` |
+| Fichier de valeurs Helm | `values-dev.yaml` | `values-prod.yaml` |
+| Sync ArgoCD | automatique (prune + selfHeal) | automatique (prune + selfHeal) |
+
+La bascule `Deployment ↔ Rollout` se fait via un simple flag Helm `rollout.enabled` — c'est le même chart qui sert les deux environnements.
+
+### L'application
+
+Serveur Express minimal (Node ≥ 20), écoutant sur le port `3000` :
+
+| Endpoint | Rôle |
+|---|---|
+| `GET /` | Le jeu Snake (HTML/CSS/JS statique) |
+| `GET /healthz` | Liveness probe |
+| `GET /readyz` | Readiness probe |
+| `GET /api/version` | Version + couleur actives (sert à visualiser le canary) |
+| `GET /api/scores` | Top 10 des scores |
+| `POST /api/scores` | Enregistrer un score |
+| `DELETE /api/scores/:id` | Supprimer un score |
+
+### Stratégie de déploiement canary (prod)
+
+Le rollout progresse par paliers de trafic avec des pauses d'observation :
 
 ```
-Argocd-SNAKE/
-├── app/                       # 🅰️ APPLICATION (lane Personne A)
-│   ├── src/                   #   Express + jeu Snake (canvas) + API scores
-│   ├── tests/                 #   tests jest (11 tests)
-│   └── Dockerfile             #   image multi-stage, non-root
-├── gitops/                    # 🅱️ GITOPS (lane Personne B)
-│   ├── apps/snake/            #   Kustomize (base + overlays dev/prod)
-│   ├── helm/snake/            #   Helm chart (Deployment ou Rollout)
-│   ├── argocd/applications/   #   AppProject + Applications ArgoCD
-│   ├── rollouts/              #   Rollout canary / blue-green (Étape 3)
-│   ├── infrastructure/        #   Terraform + TF Controller (Étape 4)
-│   └── security/              #   Sealed Secrets, RBAC ArgoCD (Étape 5)
-├── .github/workflows/         # 🅰️ CI (lane Personne A)
-├── scripts/                   # 🅱️ setup cluster / argocd / rollouts (Personne B)
-├── README.md
-└── REPARTITION.md             # découpage du travail à 2 + stratégie git
+10 %  ──(pause 30s)──►  50 %  ──(pause 30s)──►  100 %
 ```
 
-## Prérequis
+C'est ce qui permet la démo **v1 (vert) → v2 (bleu)** : on pousse la v2, ArgoCD la synchronise, et Argo Rollouts la déploie progressivement sans coupure.
 
-- Docker, `k3d`, `kubectl`, `helm`
-- (Étape 3) plugin `kubectl-argo-rollouts`
-- Un compte GitHub (image publiée sur **GHCR** = GitHub Container Registry)
+---
 
-> ⚠️ Remplacer partout `OWNER` par votre utilisateur/organisation GitHub
-> (recherche-remplace global). Concerne : manifests, values Helm, ArgoCD apps.
+## 📁 Structure du dépôt
 
-## Démarrage rapide (from scratch — c'est ce qu'on montre en démo)
+```
+Argocd-SNAKE2/
+├── app/                              # Application Node.js
+│   ├── src/
+│   │   ├── server.js                 # Point d'entrée (port 3000)
+│   │   ├── app.js                    # Routes Express (health, version, scores)
+│   │   ├── scores.js                 # Store des scores en mémoire
+│   │   └── public/                   # Front du jeu (index.html, snake.js, style.css)
+│   ├── tests/                        # Tests Jest + Supertest
+│   └── Dockerfile                    # Image publiée sur ghcr.io/clementrogue/argocd-snake
+│
+├── gitops/                           # Tout le déclaratif GitOps
+│   ├── argocd/applications/          # Les Applications ArgoCD (App = point d'entrée du sync)
+│   │   ├── project.yaml              #   AppProject "snake"
+│   │   ├── snake-dev.yaml            #   App dev  → helm + values-dev.yaml
+│   │   └── snake-prod.yaml           #   App prod → helm + values-prod.yaml
+│   │
+│   ├── helm/snake/                   # Chart Helm (utilisé par les deux envs)
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml               #   valeurs par défaut
+│   │   ├── values-dev.yaml           #   surcharge dev
+│   │   ├── values-prod.yaml          #   surcharge prod (rollout activé)
+│   │   └── templates/                #   deployment / rollout / service / helpers
+│   │
+│   ├── apps/snake/                   # Variante Kustomize (base + overlays dev/prod)
+│   │   ├── base/
+│   │   └── overlays/{dev,prod}/
+│   │
+│   ├── rollouts/                     # Définitions Argo Rollouts
+│   │   ├── rollout-canary.yaml
+│   │   ├── rollout-bluegreen.yaml
+│   │   └── analysis-success-rate.yaml
+│   │
+│   ├── infrastructure/terraform/     # IaC via Flux + Terraform Controller
+│   │   ├── main.tf
+│   │   ├── terraform.yaml            #   ressource Terraform (CRD)
+│   │   ├── gitrepository.yaml        #   source Git suivie par Flux
+│   │   └── tf-runner-rbac.yaml
+│   │
+│   └── security/                     # Durcissement
+│       ├── argocd-rbac-cm.yaml       #   RBAC ArgoCD
+│       ├── networkpolicy-*.yaml      #   Network Policies default-deny (dev + prod)
+│       └── sealed-secret-example.yaml#   secret chiffré versionnable
+│
+└── scripts/                          # Scripts d'installation numérotés
+    ├── 01-setup-cluster.sh
+    ├── 02-install-rollouts.sh
+    ├── 03-bootstrap-apps.sh
+    ├── 04-install-terraform-controller.sh
+    ├── 05-security-setup.sh
+    └── 99-teardown.sh
+```
+
+---
+
+## 🚀 Lancer le projet
+
+### Prérequis (macOS)
+
+Docker Desktop doit être démarré. Le reste s'installe via Homebrew :
 
 ```bash
-# 1. Cluster local + ArgoCD
+brew install k3d kubectl helm
+brew install argoproj/tap/kubectl-argo-rollouts
+```
+
+### Étape 0 — Cloner
+
+```bash
+git clone https://github.com/Clementrogue/Argocd-SNAKE2.git
+cd Argocd-SNAKE2
+chmod +x scripts/*.sh
+```
+
+### Étape 1 — Installation (dans l'ordre)
+
+Chaque script est idempotent et affiche ce qu'il fait.
+
+```bash
+# 1. Cluster k3d "snake" (2 agents) + installation d'ArgoCD
+#    Affiche le mot de passe admin ArgoCD à la fin — note-le.
 ./scripts/01-setup-cluster.sh
 
-# 2. Déclarer les applications ArgoCD (elles se synchronisent seules)
-./scripts/03-bootstrap-apps.sh
-
-# 3. (Étape 3) Argo Rollouts pour les déploiements progressifs
+# 2. Argo Rollouts (nécessaire avant le sync prod : la prod utilise un Rollout)
 ./scripts/02-install-rollouts.sh
 
-# 4. (Étape 4) Terraform Controller pour l'IaC
+# 3. Déclaration des Applications ArgoCD (dev + prod)
+#    ArgoCD prend le relais et synchronise tout depuis Git.
+./scripts/03-bootstrap-apps.sh
+
+# 4. (optionnel) Flux + Terraform Controller pour la partie IaC
 ./scripts/04-install-terraform-controller.sh
 
-# Accéder au jeu (dev)
+# 5. (optionnel) Sécurité : Sealed Secrets + RBAC ArgoCD + Network Policies
+./scripts/05-security-setup.sh
+```
+
+> ⚠️ L'ordre **02 avant 03** est important : la prod déploie un Argo Rollout, donc le CRD `Rollout` doit exister avant qu'ArgoCD ne tente de synchroniser `snake-prod`, sinon le premier sync échoue.
+
+### Étape 2 — Vérifier que tout est sync
+
+```bash
+kubectl -n argocd get applications
+```
+
+Résultat attendu :
+
+```
+NAME         SYNC STATUS   HEALTH STATUS
+snake-dev    Synced        Healthy
+snake-prod   Synced        Progressing   (puis Healthy, ou Suspended pendant une pause canary)
+```
+
+---
+
+## 🌐 Accéder aux interfaces
+
+> Chaque commande ci-dessous est **bloquante** : elle occupe le terminal tant qu'elle tourne. Ouvre **un onglet par service** (`Cmd+T`) et laisse-les tournés.
+
+### Le jeu Snake
+
+```bash
+# dev
 kubectl -n snake-dev port-forward svc/snake 3000:80
 # → http://localhost:3000
 ```
 
-## Les 5 étapes
+### L'UI ArgoCD
 
-| Étape | Objectif | Lane |
-|-------|----------|------|
-| 1 — Fondations | ArgoCD déploie Snake depuis Git | A: app · B: cluster + ArgoCD + manifests |
-| 2 — Helm + multi-env + CI | Push code → déploiement auto | A: CI · B: Helm/Kustomize dev vs prod |
-| 3 — Déploiements progressifs | Canary sans casser la prod | A: nouvelle version · B: Rollouts |
-| 4 — IaC | Ressource infra 100% via Git | B: Terraform Controller |
-| 5 — Sécurité | Livrable + démo | A: scan image · B: Sealed Secrets + RBAC |
+> Le port `8080` est déjà pris par le load balancer k3d → on utilise **8081**.
 
-Détail du découpage et de la stratégie git dans **[REPARTITION.md](./REPARTITION.md)**.
+```bash
+# Récupérer le mot de passe admin (user: admin)
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d; echo
 
-## Choix techniques (à défendre à l'oral)
+kubectl -n argocd port-forward svc/argocd-server 8081:443
+# → https://localhost:8081
+```
 
-- **Helm _et_ Kustomize fournis.** Kustomize (`gitops/apps/snake`) pour du
-  patch simple sans templating ; Helm (`gitops/helm/snake`) retenu pour ArgoCD
-  car il gère proprement la bascule `Deployment ↔ Rollout` via un flag
-  (`rollout.enabled`) et les valeurs par environnement (`values-dev/prod.yaml`).
-- **Canary par défaut, blue/green en option.** Canary (10% → 50% → 100% avec
-  pauses) pour valider progressivement sous vrai trafic ; blue/green
-  (`rollout-bluegreen.yaml`) quand on veut une bascule instantanée + rollback
-  1 clic sans période de cohabitation des versions.
-- **Image versionnée par SHA** (`sha-xxxxxxx`), jamais `latest` en prod : ArgoCD
-  détecte le changement de tag et resynchronise.
-- **Sécurité intégrée** : conteneur non-root + `readOnlyRootFilesystem`, scan
-  Trivy en CI, secrets chiffrés (Sealed Secrets), RBAC ArgoCD par rôle.
+### Le dashboard Argo Rollouts
 
-## Démo « voir » le canary
+> Ce n'est **pas** un port-forward : la commande lance son propre serveur web sur le port `3100`. Elle doit tourner dans **son propre terminal**. Le namespace se choisit dans le menu déroulant de l'UI.
 
-Le badge de version et la couleur du serpent sont pilotés par `APP_VERSION` /
-`APP_COLOR`. En passant prod de `v1` (vert) à `v2` (ex. orange), on observe
-visuellement la montée en charge du canary dans le dashboard Argo Rollouts.
+```bash
+kubectl argo rollouts dashboard
+# → http://localhost:3100
+```
 
-## API REST des scores
+---
 
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| GET | `/api/scores` | top 10 des scores |
-| POST | `/api/scores` | `{ "player": "brubru", "score": 42 }` |
-| DELETE | `/api/scores/:id` | supprime un score |
-| GET | `/healthz` `/readyz` | probes Kubernetes |
-| GET | `/api/version` | version + couleur (démo canary) |
+## 🎬 Démo canary (v1 vert → v2 bleu)
+
+```bash
+# Suivre le rollout en direct
+kubectl argo rollouts get rollout snake -n snake-prod --watch
+
+# Si le rollout est en pause (Suspended) : promouvoir l'étape suivante
+kubectl argo rollouts promote snake -n snake-prod
+
+# Tout promouvoir d'un coup (skip les pauses)
+kubectl argo rollouts promote snake -n snake-prod --full
+
+# En cas de souci : rollback immédiat
+kubectl argo rollouts undo snake -n snake-prod
+```
+
+Pendant la bascule, rafraîchir `http://localhost:3000` (ou l'onglet prod) montre le serpent passer progressivement du vert au bleu, au rythme des paliers 10 % → 50 % → 100 %.
+
+---
+
+## 🧹 Nettoyage
+
+```bash
+./scripts/99-teardown.sh          # supprime le cluster k3d "snake"
+```
+
+---
+
+## 🐛 Dépannage rapide
+
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| `localhost:3100` — connexion échouée | Le dashboard Rollouts n'est pas lancé (ou tué par une commande suivante) | Le lancer dans **son propre terminal** et l'y laisser |
+| Pod en `ImagePullBackOff` | L'image GHCR est privée | Rendre le package `ghcr.io/clementrogue/argocd-snake` **public** |
+| `snake-prod` reste `OutOfSync` / erreur `no matches for kind Rollout` | Argo Rollouts pas installé | Lancer `./scripts/02-install-rollouts.sh` **avant** le bootstrap |
+| Port 8080 déjà utilisé pour l'UI ArgoCD | Occupé par le load balancer k3d | Utiliser `8081:443` pour le port-forward |
+| App reste `Progressing` sans jamais finir | Rollout en pause canary (attend une validation) | `kubectl argo rollouts promote snake -n snake-prod` |
