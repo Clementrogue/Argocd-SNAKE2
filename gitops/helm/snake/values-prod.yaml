@@ -3,7 +3,7 @@ image:
   tag: sha-5576a4e
 app:
   version: "v2"
-  color: "#ff8c00"
+  color: "#00d4ff"
 rollout:
   enabled: true
   strategy: canary
